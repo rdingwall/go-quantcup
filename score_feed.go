@@ -1,6 +1,6 @@
 package main
 
-var rawFeed = []Order{
+var ordersFeed = []Order{
 	{"SYM", "ID8", Bid, 4799, 500},
 	{"SYM", "ID4", Bid, 4799, 800},
 	{"SYM", "ID7", Bid, 0, 2},

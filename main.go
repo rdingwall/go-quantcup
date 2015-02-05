@@ -2,63 +2,56 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"time"
+
+	"github.com/grd/stat"
 )
 
 const (
-	msgBatchSize int = 10
-	replays          = 200
+	batchSize   int = 10
+	replayCount     = 200
 )
 
 func main() {
-	executionCallback = func(exec Execution) {}
 
-	samples := replays * (len(rawFeed) / msgBatchSize)
-	late := make([]time.Duration, samples) // batch latency measurements
+	var e Engine
 
-	for j := 0; j < replays; j++ {
-		Init()
+	// batch latency measurements.
+	latencies := make([]time.Duration, replayCount*(len(ordersFeed)/batchSize))
 
-		for i := msgBatchSize; i < len(rawFeed); i += msgBatchSize {
+	for j := 0; j < replayCount; j++ {
+		e.Reset()
+		for i := batchSize; i < len(ordersFeed); i += batchSize {
 			begin := time.Now()
-			feed(i-msgBatchSize, i)
+			feed(&e, i-batchSize, i)
 			end := time.Now()
-
-			late[i/msgBatchSize-1+(j*(len(rawFeed)/msgBatchSize))] = end.Sub(begin)
+			latencies[i/batchSize-1+(j*(len(ordersFeed)/batchSize))] = end.Sub(begin)
 		}
-
-		destroy()
 	}
 
-	var lateTotal int64 = 0
+	data := DurationSlice(latencies)
 
-	for i := 0; i < samples; i++ {
-		lateTotal += int64(late[i])
-	}
+	var mean float64 = stat.Mean(data)
+	var stdDev = stat.SdMean(data, mean)
+	var score = 0.5 * (mean + stdDev)
 
-	var lateMean float32 = float32(lateTotal) / float32(samples)
-	var lateCentered float32 = 0
-	var lateSqTotal float64 = 0
-	for i := 0; i < samples; i++ {
-		lateCentered = float32(late[i]) - lateMean
-		lateSqTotal += float64(lateCentered * lateCentered / float32(samples))
-	}
-	var lateSd float32 = float32(math.Sqrt(lateSqTotal))
-	fmt.Printf("mean(latency) = %v, sd(latency) = %v\n", lateMean, lateSd)
-
-	var score float32 = 0.5 * (lateMean + lateSd)
-	fmt.Printf("You scored %v. Try to minimize this.\n", score)
+	fmt.Printf("mean(latency) = %1.2f, sd(latency) = %1.2f\n", mean, stdDev)
+	fmt.Printf("You scored %1.2f. Try to minimize this.\n", score)
 }
 
-func feed(begin int, end int) {
+func feed(e *Engine, begin, end int) {
 	for i := begin; i < end; i++ {
-		var order Order = rawFeed[i]
-		if rawFeed[i].price == 0 {
+		var order Order = ordersFeed[i]
+		if order.price == 0 {
 			orderID := OrderID(order.size)
-			cancel(orderID)
+			e.Cancel(orderID)
 		} else {
-			limit(order)
+			e.Limit(order)
 		}
 	}
 }
+
+type DurationSlice []time.Duration
+
+func (f DurationSlice) Get(i int) float64 { return float64(f[i]) }
+func (f DurationSlice) Len() int          { return len(f) }
