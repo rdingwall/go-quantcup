@@ -13,7 +13,6 @@ const (
 )
 
 func main() {
-
 	var e Engine
 
 	// batch latency measurements.
