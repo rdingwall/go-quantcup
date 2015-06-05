@@ -5,5 +5,5 @@ notificaitons:
     on_success: change
     on_failure: always
 install:
-- go get github.com/stretchr/testify/assert
-- go get github.com/grd/stat
+  - go get github.com/stretchr/testify/assert
+  - go get github.com/grd/stat
