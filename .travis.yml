@@ -1,5 +1,5 @@
 language: go
-notificaitons:
+notifications:
   email:
     recipients: rdingwall@gmail.com
     on_success: change
